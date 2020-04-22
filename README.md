@@ -170,7 +170,7 @@ LSTM(6, 48)	 g~bias_hh_l0         	 -0.0168	 -0.0037	 +0.0432	 -0.2312	 +0.0535	
 
 ## OpenQuestions
 There is certain things i do not understand fully yet
-* how exactly are the different classes of loss backpropagated, i.e. do their gradients add up or similiar
+* ~~how exactly are the different classes of loss backpropagated, i.e. do their gradients add up or similiar~~ (answered above)
 * why do we have to run each episode/epoch twice, one for accumulation of the episode buffer and one for the calculation of gradients, can that be merged?
 * make this faster?
 * why 
