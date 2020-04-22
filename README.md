@@ -59,6 +59,10 @@ tensorboard --logdir metalearn_rnn\out1\0421-193012\tb
 
 dada
 
+### LSTM implementation in torch
+
+even though on a high level we have a lot of different gates, the can be trained by the same forumlas, hence they were pooled into two variables in their pytorch implementation. for more background see here and here. 
+
 ### Loss.backward() in PyTorch for A2C/multiple types of losses
 
 tl;dr: gradients are computed for each loss part separately and summed up at the level of weights.
