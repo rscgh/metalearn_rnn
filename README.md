@@ -90,7 +90,7 @@ print_tensor_param_stats(self.lstm, grad=True)
 ...
 ```
 
-Done for all kinds of different losses This yielded the following (sample output for episode nr 20:
+Done for all kinds of different losses This yielded the following (sample output for episode nr 20; using raw, unclipped gradient info):
 
 ```
 Name                                    avgp    medp    stdp      minp      maxp      sump
@@ -172,6 +172,7 @@ LSTM(6, 48)	 g~bias_hh_l0         	 -0.0168	 -0.0037	 +0.0432	 -0.2312	 +0.0535	
 * gradients simply add up, i.e. adding up the `entropy and value loss` (-294.5758) and  `Policy loss` (-46.2375) weight sums for the LSTM ih_weights yields the `Normal Loss/original loss` (-340.8133).
 * `value loss` only assigns/adds to the gradient of the first linear layer (the value output head) but not the second, and the opposite is true for `policy loss`
 * there is no std for the `value bias` gradients (first linear layer), because we only have one bias unit and hence cannot calculate a standard deviation
+* gradients in the beginning can become rather big, so maybe its a good idea to clip it using `torch.nn.utils.clip_grad_norm_(self.parameters(), 999.0)`
 
 
 ## OpenQuestions
@@ -179,4 +180,4 @@ There is certain things i do not understand fully yet
 * ~~how exactly are the different classes of loss backpropagated, i.e. do their gradients add up or similiar~~ (answered above)
 * why do we have to run each episode/epoch twice, one for accumulation of the episode buffer and one for the calculation of gradients, can that be merged?
 * make this faster?
-* why 
+* at what level does gradient clipping work?
