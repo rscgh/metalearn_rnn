@@ -30,6 +30,12 @@ python -u sscandn.py
 
 ## Findings
 
+to view the progress in greater detail use tensorboard
+
+```
+tensorboard --logdir metalearn_rnn\out1\0421-193012_firstworks\tb
+```
+
 ### Results
 
 * convergence with PDSP otimizer @ roughly 12k
