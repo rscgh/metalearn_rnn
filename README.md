@@ -55,6 +55,10 @@ tensorboard --logdir metalearn_rnn\out1\0421-193012\tb
 
 ### Tensorboard
 
+dada
+
+### Loss.backward() in PyTorch for A2C/multiple types of losses
+
 
 ## OpenQuestions
 There is certain things i do not understand fully yet
