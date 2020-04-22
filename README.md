@@ -10,9 +10,11 @@ This is the general high level description.  XXX is an implementation of the age
 
 This is my first implementation of a neural 
 
+There is also an online implementation on google colab: XXX
+
 ## Requirements
 
-The python scripts were written using python 3.7 and pytorch X.X
+The python scripts were written using python 3.7 and pytorch 1.4.0+cpu
 ```sh
 # Pytorch Version: 1.4.0+cpu
 pip install torch numpy scipy
