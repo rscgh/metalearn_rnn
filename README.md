@@ -86,7 +86,7 @@ print_tensor_param_stats(self.lstm, grad=True)
 ...
 ```
 
-Done for all kinds of different losses This yielded the following:
+Done for all kinds of different losses This yielded the following (sample output for episode nr 20:
 
 ```
 Name                                    avgp    medp    stdp      minp      maxp      sump
