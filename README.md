@@ -4,8 +4,11 @@ This is the general high level description.  XXX is an implementation of the age
 
 * .py is the one to one transferred
 * .py was modified to increase understanding (both task and ...) and includes loaded/saving options + fixing weights ...
-* .py introduces certain modifications 
+* .py introduces certain modifications (adam?; different learning rates, different episode sizes)
+* py uses a different training algorithm (as described on XXX)
 * .py introduces a novel task (described in XXX)
+
+This is my first implementation of a neural 
 
 ## Requirements
 
@@ -28,8 +31,14 @@ python -u sscandn.py
 
 ### Early weight changes anticipating market improvement (timeline from one execution)
 
-8k  -   dadasd
-10k -   dudud
+
+| Step/Epoch    | Are           |
+| :------------ |:-------------:|
+| 8k            | a few LSTM weights are increased  |
+| 12k           | centered      |
+| 15k           | are neat      |
+
+[Images here]
 
 ### Tensorboard
 
