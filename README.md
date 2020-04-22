@@ -61,10 +61,11 @@ dada
 
 tl;dr: gradients are computed for each loss part separately and summed up at the level of weights.
 
-I still find it quite confusing how the loss is backpropagated within pytorch. Some good explanations with very simple examples can be found here, here and here. Yet I wasnt sure how for example the gradient is computed when a single variable (i.e. the ih_weights of the LSTM) feature in two kinds of losses. Hence I tried to dissect it using the following code
+I still find it quite confusing how the loss is backpropagated within pytorch. Some good explanations with very simple examples can be found here, here and here. Yet I wasnt sure how for example the gradient is computed when a single variable (i.e. the ih_weights of the LSTM) feature in two kinds of losses. Hence I tried to dissect it using the following code that plots stats about the calculated gradients at the different variables after distinct backwarded losses:
 
 ```python
-# we always need to make sure retrain=true, otherwise the saved activation per variable (i.e. weights) is lost after the first .backward() call
+# we always need to make sure retrain=true, otherwise the saved activation per variable (i.e. weights)
+# is lost after the first .backward() call
 loss.backward(retain_graph=True);
 
 print("#######################\n#-- Normal Loss backward: 0.05 * value_loss + policy_loss - 0.05 * entropy_loss")
@@ -86,6 +87,8 @@ print_tensor_param_stats(self.lstm, grad=True)
 Done for all kinds of different losses This yielded the following:
 
 ```
+Name                                    avgp    medp    stdp      minp      maxp      sump
+-----------------------------------------------------------------------------------------------
 #######################
 #-- Normal Loss backward: 0.05 * value_loss + policy_loss - 0.05 * entropy_loss
 Linear(in_featu	 g~weight         	 -2.3694	 -8.8223	+10.4206	-11.7314	+11.7338	-113.7291
@@ -147,26 +150,6 @@ LSTM(6, 48)	 g~weight_hh_l0       	 -0.0465	 -0.0009	 +0.7156	 -4.3632	 +4.3728	
 LSTM(6, 48)	 g~bias_ih_l0         	 -0.3368	 -0.0750	 +0.8561	 -4.5424	 +1.0780	-64.6722
 LSTM(6, 48)	 g~bias_hh_l0         	 -0.3368	 -0.0750	 +0.8561	 -4.5424	 +1.0780	-64.6722
 #######################
-#-- entropy loss backward
-Linear(in_featu	 g~weight         	 +0.0000	 +0.0000	 +0.0000	 +0.0000	 +0.0000	 +0.0000
-Linear(in_featu	 g~bias           	 +0.0000	 +0.0000	    +nan	 +0.0000	 +0.0000	 +0.0000
-Linear(in_featu	 g~weight         	 -0.0000	-11.2958	+28.0532	-30.6003	+30.6003	 -0.0000
-Linear(in_featu	 g~bias           	 +0.0000	-30.7085	+43.4284	-30.7085	+30.7085	 +0.0000
-LSTM(6, 48)	 g~weight_ih_l0       	 +0.0323	 -0.0007	 +0.6781	 -6.8103	+10.8801	+37.2417
-LSTM(6, 48)	 g~weight_hh_l0       	 -0.0000	 -0.0000	 +0.0130	 -0.0809	 +0.0809	 -0.4234
-LSTM(6, 48)	 g~bias_ih_l0         	 -0.0008	 -0.0015	 +0.0154	 -0.0494	 +0.0807	 -0.1459
-LSTM(6, 48)	 g~bias_hh_l0         	 -0.0008	 -0.0015	 +0.0154	 -0.0494	 +0.0807	 -0.1459
-#######################
-#-- entropy loss backward: 0.05 * entropy_loss
-Linear(in_featu	 g~weight         	 +0.0000	 +0.0000	 +0.0000	 +0.0000	 +0.0000	 +0.0000
-Linear(in_featu	 g~bias           	 +0.0000	 +0.0000	    +nan	 +0.0000	 +0.0000	 +0.0000
-Linear(in_featu	 g~weight         	 +0.0000	 -0.5648	 +1.4027	 -1.5300	 +1.5300	 +0.0000
-Linear(in_featu	 g~bias           	 +0.0000	 -1.5354	 +2.1714	 -1.5354	 +1.5354	 +0.0000
-LSTM(6, 48)	 g~weight_ih_l0       	 +0.0016	 -0.0000	 +0.0339	 -0.3405	 +0.5440	 +1.8621
-LSTM(6, 48)	 g~weight_hh_l0       	 -0.0000	 -0.0000	 +0.0006	 -0.0040	 +0.0040	 -0.0212
-LSTM(6, 48)	 g~bias_ih_l0         	 -0.0000	 -0.0001	 +0.0008	 -0.0025	 +0.0040	 -0.0073
-LSTM(6, 48)	 g~bias_hh_l0         	 -0.0000	 -0.0001	 +0.0008	 -0.0025	 +0.0040	 -0.0073
-#######################
 #-- entropy and value loss backward: 0.05 * value_loss - 0.05 * entropy_loss
 Linear(in_featu	 g~weight         	 -2.3694	 -8.8223	+10.4206	-11.7314	+11.7338	-113.7291
 Linear(in_featu	 g~bias           	-12.1059	-12.1059	    +nan	-12.1059	-12.1059	-12.1059
@@ -176,17 +159,14 @@ LSTM(6, 48)	 g~weight_ih_l0       	 -0.2557	 -0.0005	 +2.0433	-30.1266	 +0.2279	
 LSTM(6, 48)	 g~weight_hh_l0       	 -0.0023	 -0.0000	 +0.0362	 -0.2222	 +0.2227	-21.3941
 LSTM(6, 48)	 g~bias_ih_l0         	 -0.0168	 -0.0037	 +0.0432	 -0.2312	 +0.0535	 -3.2263
 LSTM(6, 48)	 g~bias_hh_l0         	 -0.0168	 -0.0037	 +0.0432	 -0.2312	 +0.0535	 -3.2263
-#######################
-#-- entropy and policy loss backward: policy_loss - 0.05 * entropy_loss
-Linear(in_featu	 g~weight         	 +0.0000	 +0.0000	 +0.0000	 +0.0000	 +0.0000	 +0.0000
-Linear(in_featu	 g~bias           	 +0.0000	 +0.0000	    +nan	 +0.0000	 +0.0000	 +0.0000
-Linear(in_featu	 g~weight         	 -0.0000	-11.1242	+29.6898	-32.6978	+32.6978	 -0.0000
-Linear(in_featu	 g~bias           	 -0.0000	-31.4037	+44.4115	-31.4037	+31.4037	 -0.0000
-LSTM(6, 48)	 g~weight_ih_l0       	 -0.0418	 +0.0029	 +0.8521	-13.7778	+10.1339	-48.0996
-LSTM(6, 48)	 g~weight_hh_l0       	 +0.0003	 +0.0002	 +0.0163	 -0.1007	 +0.1010	 +2.5542
-LSTM(6, 48)	 g~bias_ih_l0         	 +0.0063	 +0.0076	 +0.0297	 -0.1105	 +0.1506	 +1.2095
-LSTM(6, 48)	 g~bias_hh_l0         	 +0.0063	 +0.0076	 +0.0297	 -0.1105	 +0.1506	 +1.2095
+...
 ```
+* after calling `self.optimizer.zero_grad()`, all the gradients are reset to zero
+* The gradients double when calling a second time i.e. avg  for first linear layer weight goes from -2.3694 to -4.7387
+* gradients simply add up, i.e. adding up the `entropy and value loss` (-294.5758) and  `Policy loss` (-46.2375) weight sums for the LSTM ih_weights yields the `Normal Loss/original loss` (-340.8133).
+* `value loss` only assigns/adds to the gradient of the first linear layer (the value output head) but not the second, and the opposite is true for `policy loss`
+* there is no std for the `value bias` gradients (first linear layer), because we only have one bias unit and hence cannot calculate a standard deviation
+
 
 ## OpenQuestions
 There is certain things i do not understand fully yet
