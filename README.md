@@ -14,6 +14,7 @@ This is my first implementation of a neural
 
 The python scripts were written using python 3.7 and pytorch X.X
 ```sh
+# Pytorch Version: 1.4.0+cpu
 pip install torch numpy scipy
 
 # for visuzalization / plotting the images 
