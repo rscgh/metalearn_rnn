@@ -29,6 +29,12 @@ python -u sscandn.py
 
 ## Findings
 
+### Results
+
+* convergence with PDSP otimizer @ roughly 12k
+* learns how to play the game
+* not relfected in loss but much more the cummulative reward per episode (random reward baseline would be 100)
+
 ### Early weight changes anticipating market improvement (timeline from one execution)
 
 
