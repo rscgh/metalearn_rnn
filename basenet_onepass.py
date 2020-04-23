@@ -8,8 +8,15 @@ Additionally to previous implementations, I added more logging and put a focus o
 
 File from the repository: https://github.com/rscgh/metalearn_rnn
 
+This implementation just uses one pass for each trial through the network instead of two which was done in the original tensorflow implementation (so it combines episode rollout accumulation and gradient tagging of the variables). This does not nessesarily result in better performance / shorter runtime.
 
 '''
+
+
+## Imports
+
+import os
+
 
 import torch
 import torch.nn as nn
@@ -20,18 +27,25 @@ from scipy import signal as scysignal
 
 import torch.tensor as ts
 
+
 from games.rsc_two_step import rsc_two_step
+from tst import two_step_task
 
 # logging stuff 
 
-import os
 import time
 from time import gmtime, strftime
+
+from pytictoc import TicToc
 
 import matplotlib.pyplot as plt
 from collections import namedtuple
 
 from torch.utils.tensorboard import SummaryWriter
+
+
+
+tt = TicToc()
 
 
 
@@ -124,6 +138,7 @@ class OwnRnn(nn.Module):
     # used for the matplotlib images
     self.output_pref = log_dir + "/ownrnn_ep-"
     self.wr = SummaryWriter(log_dir=log_dir + '/tb')
+    self.log_dir = log_dir
 
     return
 
@@ -200,6 +215,8 @@ class OwnRnn(nn.Module):
         self.plot(x, taskenv.stats)
         taskenv.stats = np.zeros((2,2,2));
 
+        self.save_model(x);
+
       # log more detailed states every 2000 episodes to tensorboard (do this more rarely as it may be somewhat resource intensive)
       if x % 2000 == 0:
 
@@ -224,7 +241,6 @@ class OwnRnn(nn.Module):
     ### End for;
   ### end do training
 
-
   # this is basically our episode
   def run_x_times(self, number_of_feedforward_steps, taskenv):
     
@@ -244,8 +260,13 @@ class OwnRnn(nn.Module):
     hx = torch.zeros(1, self.num_rnn_units).view(1,1,-1)
     
     #one batch ~ one episode of 200 trials, will be saved internally
+    self.epb_values = torch.zeros((200))
+    self.epb_entrop = torch.zeros((200))
+    self.epb_logprb = torch.zeros((200))
+    self.epb_policy = torch.zeros((200, self.num_actions))
+
     self.epbuffer = []
-    
+  
     taskenv.reset()
 
     for i in range(number_of_feedforward_steps):
@@ -263,7 +284,8 @@ class OwnRnn(nn.Module):
       policy_out = self.action_outp_layer(out)
 
       # draw action from the last and only action distribution
-      policy_distrib = self.act_smx(policy_out).contiguous()
+      policy_smx = self.act_smx(policy_out)
+      policy_distrib = policy_smx.contiguous()
       act_distr = torch.distributions.Categorical(policy_distrib.view(-1,self.num_actions)[-1])
       act = act_distr.sample()
      
@@ -276,7 +298,14 @@ class OwnRnn(nn.Module):
 
       # do not keep any gradient releveant info, aka dont save any tensors
       # save as: action done -> stated reached upon that action -> reward received for that state, and actually predicted value of that action, all @ timepoint i
-      self.epbuffer.append([ act.item(), reached_state, reward, i, value.item()])
+      #self.epbuffer.append([ act.item(), reached_state, reward, i, value.squeeze().clone().detach(), act_distr.entropy().mean().clone().detach(), act_distr.log_prob(act).clone().detach()])
+      self.epbuffer.append([act.detach(), reached_state, reward, i, value.item()]);
+
+      # .copy_() copies in place and keeps the gradient information
+      self.epb_values[i].copy_(value.squeeze())
+      self.epb_entrop[i].copy_(act_distr.entropy().mean())
+      self.epb_logprb[i].copy_(act_distr.log_prob(act))
+      self.epb_policy[i].copy_(policy_smx.squeeze())
 
       #self.a2c_ts_out_buffer.append(SavedAction(act_distr.log_prob(act), value))
 
@@ -286,6 +315,10 @@ class OwnRnn(nn.Module):
       prev_receivd_rewrd = ts([reward])
 
     # end of for number of feedforward steps
+
+    cinput  = torch.cat((oh_prev_action, oh_prev_reached_state, prev_receivd_rewrd, ts([number_of_feedforward_steps])), 0).float().view(1,1,self.input_size);
+    out, (hx, cx) = self.lstm(cinput, (hx, cx))
+    self.final_value = self.value_outp_layer(out).squeeze().detach()
     
     return self.epbuffer;
 
@@ -303,19 +336,23 @@ class OwnRnn(nn.Module):
     # standard procedure is to take the internal buffer, it can also be given explicitly to make it nicer
     # to make the code more readily readable
     if epbuffer != None: epbuffer=self.epbuffer;
-    epbuffer = np.array(epbuffer) # just make sure to convert to numpy
+
+    epbuffer = np.array(epbuffer)
 
     ## prepare the input
 
     actions         = epbuffer[:,0]                      # based on the policy head output of the A2C
     reached_states  = epbuffer[:,1]
-    rewards         = epbuffer[:,2].astype(np.long)      # may be nessesary, as nparray may happen to be of type object np array, if we 
-    timesteps       = epbuffer[:,3].astype(np.long)      # i.e. use it to be tensors, otherwise no problem (so could also leave it away)
+    rewards         = epbuffer[:,2].astype(np.long)                      # may be nessesary, as nparray may happen to be of type object np array, if we 
+    timesteps       = epbuffer[:,3].astype(np.long)                 # i.e. use it to be tensors, otherwise no problem (so could also leave it away)
     pred_values     = epbuffer[:,4]                      # based on the value head output of the A2C
 
+    
+    '''
     prev_actions        = [0] + actions[:-1].tolist()    # prev conducted_actions
     prev_reached_states = [0] + reached_states[:-1].tolist()     # previously reaced states through that action
     prev_rewards        = [0] + rewards[:-1].tolist()    # the result of the previous state
+    
 
     # network needs tensors as input
     ohprev_actions         = F.one_hot(ts(prev_actions).long(), self.num_actions).long()
@@ -333,12 +370,12 @@ class OwnRnn(nn.Module):
     # [trials per episode ~200, numer of episodes ~ 1, input size ~ action+state+rew+ts]
     cinput = cinput.float().view(len(epbuffer),1,self.input_size);
 
-
     ## run the network
 
     # initialize the recurrence nodes of the LSTM; start with state zero, as should be the beginning of each episode (~200 trials)
     cx = torch.zeros(1, self.num_rnn_units).view(1,1,-1)
     hx = torch.zeros(1, self.num_rnn_units).view(1,1,-1)
+
 
     # feed the input into the LSTM nodes and get the output
     out, (hx, cx) = self.lstm(cinput, (hx, cx))
@@ -348,11 +385,16 @@ class OwnRnn(nn.Module):
     values = self.value_outp_layer(out)
     policy_out1 = self.action_outp_layer(out)
     policy_out = self.act_smx(policy_out1)
+    '''
+
+    # get the buffered network outputs with the gradient info preserveed
+    # in contrast to epbuffer, which only keeps track of things without grad
+    values = self.epb_values;
+    policy_out = self.epb_policy;
 
 
     ## do the loss calculation 
 
-    
     # calculate the policy loss (has biggest influence)
 
     ohactions = F.one_hot(ts(actions.tolist()).long(), self.num_actions)
@@ -418,6 +460,17 @@ class OwnRnn(nn.Module):
 
     return {'loss': loss.item(), 'acc_ep_reward':  rewards.sum().item() }
 
+  def save_model(self, episode_count):
+    save_pth = log_dir + '/model.tar';
+    if os.path.isfile(save_pth): os.remove(save_pth);
+    print("Saving model after training: ", save_pth)
+    torch.save({
+    'model_type_version': os.path.realpath(__file__) + ":OwnRnn",
+    'epochs_trained': episode_count,
+    'model_state_dict': self.state_dict(),
+    'optimizer_state_dict' : self.optimizer.state_dict(),
+    'optimizer': type(optimizer)
+    }, save_pth)
 
 
   ## from here on, we only have plotting functions
@@ -531,6 +584,7 @@ if __name__ == '__main__':
   # save the model, and load again for prediciton
 
   save_pth = log_dir + '/model.tar';
+  os.remove(save_pth)
   print("###########################################")
   print("Saving model after training: ", save_pth)
 
@@ -540,7 +594,7 @@ if __name__ == '__main__':
   'epochs_trained': 20000,
   'model_state_dict': rnn.state_dict(),
   'optimizer_state_dict' : rnn.optimizer.state_dict(),
-  'optimizer': optimizer
+  'optimizer': type(rnn.optimizer)
   }, save_pth)
 
   print("Loading again from ", save_pth)
@@ -564,8 +618,8 @@ if __name__ == '__main__':
     sum_rewards = np.array(episode_result)[:,2].sum();
     rewards = rewards + [sum_rewards]
 
-  # 100.png will be the filename
-  loadedrnn.plot(100, env.stats)
+  # ownrnn-xpred100.png will be the filename
+  loadedrnn.plot('xpred100', env.stats)
   print("Prediction rewards: ", rewards)
   print("Mean rewards of 100 episodes predictions: ", np.array(rewards).mean())
 

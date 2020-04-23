@@ -9,8 +9,10 @@ Additionally to previous implementations, I added more logging and put a focus o
 Specifically:
 * basenet.py contains the basic implementation
 
-* basenet_altloss.py uses a different kind of loss (as described on [here](https://github.com/rpatrik96/pytorch-a2c/blob/master/src/runner.py))
-* basenet_onerun.py computes the episode rollout and the loss at the same iteration of the network
+* `basenet_onepass.py` just uses one pass for each trial through the network instead of two (episode rollout and gradient tags are gathered from one forward pass of the network)
+
+* `basenet_altloss.py` uses a different kind of loss (as described on [here](https://github.com/rpatrik96/pytorch-a2c/blob/master/src/runner.py)); havent yet found a working hyperparameter config (or maybe my implementation is wrong)
+
 
 * extnet.py introduces a novel task (described in XXX)
 
