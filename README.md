@@ -13,9 +13,8 @@ Specifically:
 
 * extnet.py introduces a novel task (described in XXX)
 
-This is my first implementation of a neural 
-
-There is also an online implementation on google colab: XXX
+This is my first implementation of an ANN and hence errors / suboptimal code may be contained.
+An online version can also be found on google colab: XXX
 
 ## Requirements
 
