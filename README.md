@@ -7,11 +7,12 @@ This largely mirros and is based on on a tensorflow implementation of the same a
 Additionally to previous implementations, I added more logging and put a focus on code readibility/understanding of the implementation.
 
 Specifically:
-* .py is the one to one transferred
-* .py was modified to increase understanding (both task and ...) and includes loaded/saving options + fixing weights ...
-* .py introduces certain modifications (adam?; different learning rates, different episode sizes)
-* py uses a different training algorithm (as described on XXX)
-* .py introduces a novel task (described in XXX)
+* basenet.py contains the basic implementation
+
+* basenet_altloss.py uses a different kind of loss (as described on [here](https://github.com/rpatrik96/pytorch-a2c/blob/master/src/runner.py))
+* basenet_onerun.py computes the episode rollout and the loss at the same iteration of the network
+
+* extnet.py introduces a novel task (described in XXX)
 
 This is my first implementation of a neural 
 
