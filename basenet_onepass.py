@@ -21,22 +21,18 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.tensor as ts
 
 import numpy as np
 from scipy import signal as scysignal
 
-import torch.tensor as ts
-
 
 from games.rsc_two_step import rsc_two_step
-from tst import two_step_task
 
 # logging stuff 
 
 import time
 from time import gmtime, strftime
-
-from pytictoc import TicToc
 
 import matplotlib.pyplot as plt
 from collections import namedtuple
@@ -45,38 +41,15 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 
-tt = TicToc()
-
-
-
 ## Helper functions
 
 discount = lambda x, gamma: scysignal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
-
-#SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
-
-# trace back the graident tree helper function
-# not used
-def getBack(var_grad_fn):
-    print(var_grad_fn)
-    for n in var_grad_fn.next_functions:
-        if n[0]:
-            try:
-                tensor = getattr(n[0], 'variable')
-                print(n[0])
-                x = input("Weiter? ")
-                #print('Tensor with grad found:', tensor)
-                #print(' - gradient:', tensor.grad)
-                #print()
-            except AttributeError as e:
-                getBack(n[0])
 
 
 def normalized_columns_initializer(weights, std=1.0):
     out = torch.randn(weights.size())
     out *= std / torch.sqrt(out.pow(2).sum(1, keepdim=True))
     return out
-
 
 
 
@@ -158,21 +131,14 @@ class OwnRnn(nn.Module):
 
       taskenv.reset()
 
-      # have the network run twice: first accumuluating the episode rollout (run single action by action)
-      # so kinda detach the episode accumulation from the gradient calculation and run as a batch on the update weights function
-
-      # first run
       # each episdoe has 200 game steps / trials
       episode_buffer = self.run_x_times(single_episode_length, taskenv)
       
-
-      # second run
-      # for estimation of loss; without interacting anew with the environment...;
+      # estimation of loss and weight update
       info = self.calc_loss_and_update_weights(episode_buffer, t=x);
 
 
       ### from here on, we only have logging functions, can be edited as pleased
-
       new_highscore =  info['acc_ep_reward'] > min_acc_episode_reward;
 
       # this is the progress report info line that updates every 20 trials to the console
@@ -183,8 +149,6 @@ class OwnRnn(nn.Module):
 
         print(int(x*100/num_episodes),"% - ", "Episode: ", x,  " \tLoss = ", info['loss'], " \tAccRew = ", info['acc_ep_reward'], minstr )
 
-
-      # starting from here on, we only keep track of the stats, i.e. value distrubutions of parameters/weights and their gradients
 
       if x % stats_every_x_episodes == 0:
 
@@ -248,8 +212,7 @@ class OwnRnn(nn.Module):
     # equals one episode with one feedforward thing, so instead
     # we define an episode as enough draws:
 
-    # number_of_feedforward_steps ~ our batch size / episode length
-
+    # number_of_feedforward_steps ~ our batch size ~ episode length
 
     oh_prev_action        = F.one_hot(ts(0), self.num_actions)
     oh_prev_reached_state = F.one_hot(ts(0), self.num_states )
@@ -296,18 +259,19 @@ class OwnRnn(nn.Module):
       [reached_state, reward] = taskenv.conduct_action(act.item())
       # out: reached state is either 0 or 1; reward also either 0 or 1
 
+
       # do not keep any gradient releveant info, aka dont save any tensors
       # save as: action done -> stated reached upon that action -> reward received for that state, and actually predicted value of that action, all @ timepoint i
-      #self.epbuffer.append([ act.item(), reached_state, reward, i, value.squeeze().clone().detach(), act_distr.entropy().mean().clone().detach(), act_distr.log_prob(act).clone().detach()])
       self.epbuffer.append([act.detach(), reached_state, reward, i, value.item()]);
 
       # .copy_() copies in place and keeps the gradient information
+      # all these keep reference to the original variables and their gradients
+      # and thus 'taggs' them for update
       self.epb_values[i].copy_(value.squeeze())
       self.epb_entrop[i].copy_(act_distr.entropy().mean())
       self.epb_logprb[i].copy_(act_distr.log_prob(act))
       self.epb_policy[i].copy_(policy_smx.squeeze())
 
-      #self.a2c_ts_out_buffer.append(SavedAction(act_distr.log_prob(act), value))
 
       # prepare vars for the next trial
       oh_prev_reached_state = F.one_hot(ts(reached_state), self.num_states)
@@ -343,51 +307,12 @@ class OwnRnn(nn.Module):
 
     actions         = epbuffer[:,0]                      # based on the policy head output of the A2C
     reached_states  = epbuffer[:,1]
-    rewards         = epbuffer[:,2].astype(np.long)                      # may be nessesary, as nparray may happen to be of type object np array, if we 
-    timesteps       = epbuffer[:,3].astype(np.long)                 # i.e. use it to be tensors, otherwise no problem (so could also leave it away)
+    rewards         = epbuffer[:,2].astype(np.long)      # may be nessesary, as nparray may happen to be of type object np array, if we 
+    timesteps       = epbuffer[:,3].astype(np.long)      # i.e. use it to be tensors, otherwise no problem (so could also leave it away)
     pred_values     = epbuffer[:,4]                      # based on the value head output of the A2C
 
-    
-    '''
-    prev_actions        = [0] + actions[:-1].tolist()    # prev conducted_actions
-    prev_reached_states = [0] + reached_states[:-1].tolist()     # previously reaced states through that action
-    prev_rewards        = [0] + rewards[:-1].tolist()    # the result of the previous state
-    
 
-    # network needs tensors as input
-    ohprev_actions         = F.one_hot(ts(prev_actions).long(), self.num_actions).long()
-    ohprev_reached_states  = F.one_hot(ts(prev_reached_states).long(), self.num_states).long()    
-    prev_rewards           = ts(prev_rewards).view(len(epbuffer),1)
-    timesteps_ts           = ts(timesteps.tolist()).view(len(epbuffer),1)
-
-    #prev_reached_states = ts(prev_reached_states.tolist()).view(len(epbuffer),2)
-
-    # merge them all horizontally (i.e. one array row contains one trial)
-    cinput = torch.cat((ohprev_actions, ohprev_reached_states, prev_rewards, timesteps_ts), 1);
-
-    # transform it all into the right input array of shape 
-    # i.e. add another dimension for episode id; but we only have one episode of 200 trials to process
-    # [trials per episode ~200, numer of episodes ~ 1, input size ~ action+state+rew+ts]
-    cinput = cinput.float().view(len(epbuffer),1,self.input_size);
-
-    ## run the network
-
-    # initialize the recurrence nodes of the LSTM; start with state zero, as should be the beginning of each episode (~200 trials)
-    cx = torch.zeros(1, self.num_rnn_units).view(1,1,-1)
-    hx = torch.zeros(1, self.num_rnn_units).view(1,1,-1)
-
-
-    # feed the input into the LSTM nodes and get the output
-    out, (hx, cx) = self.lstm(cinput, (hx, cx))
-    
-    # two heads for the A2C algorithm (actor critic); 
-    # feed in the output gathered from the hidden nodes of the LSTM
-    values = self.value_outp_layer(out)
-    policy_out1 = self.action_outp_layer(out)
-    policy_out = self.act_smx(policy_out1)
-    '''
-
-    # get the buffered network outputs with the gradient info preserveed
+    # get the buffered network outputs with the gradient info preserved
     # in contrast to epbuffer, which only keeps track of things without grad
     values = self.epb_values;
     policy_out = self.epb_policy;
@@ -396,7 +321,6 @@ class OwnRnn(nn.Module):
     ## do the loss calculation 
 
     # calculate the policy loss (has biggest influence)
-
     ohactions = F.one_hot(ts(actions.tolist()).long(), self.num_actions)
     resp_outps = torch.sum(policy_out.squeeze() * ohactions, dim=1)
 
