@@ -20,18 +20,38 @@ An online version can also be found on google colab: XXX
 
 The python scripts were written using python 3.7 and pytorch 1.4.0+cpu
 ```sh
-# Pytorch Version: 1.4.0+cpu
 pip install torch numpy scipy
 
 # for visuzalization / plotting the images 
 pip install matplotlib
-# for timing?
-pip install pytictoc
+
+```
+
+To get the exact pytorch version that I used:
+```
+# pip install torch==1.4.0+cpu torchvision==0.5.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
 ```
 
 ## Execution
 ```sh
-python -u sscandn.py
+python -u basenet.py
+
+# using windows powershell and logging console output via Tee
+python -u .\basenet_altloss2.py 2>&1 | % ToString | tee 'consoleoutput.txt'
+```
+
+or from within python (untested)
+```python
+from basenet import OwnRnn
+from games.rsc_two_step import rsc_two_step
+
+# load the environment
+env = rsc_two_step();
+
+# create and train the model
+# an alternative optimizer is 'Adam'
+rnn = OwnRnn(log_dir = 'out1/log', optimizer_str = 'RMS', learning_rate = 7e-4) 
+rnn.do_training(env, num_episodes = 20000, single_episode_length = 200, stats_every_x_episodes = 500)
 ```
 
 ## Findings
@@ -44,7 +64,7 @@ tensorboard --logdir metalearn_rnn\out1\0421-193012\tb
 
 ### Results
 
-* convergence with PDSP otimizer @ roughly 12k
+* convergence of the `basenet.py` with RMSprop otimizer @ roughly 12k
 * learns how to play the game
 * not relfected in loss but much more the cummulative reward per episode (random reward baseline would be 100)
 
