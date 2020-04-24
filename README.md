@@ -2,15 +2,15 @@
 
 This is a pytorch implementation of the agent described in [Wang et al., 2018](https://www.biorxiv.org/content/biorxiv/early/2018/04/13/295964.full.pdf). 
 
-This largely mirros and is based on on a tensorflow implementation of the same agent by [Michaël Trazzi and Yasmine Hamdani, under the supervision of Olivier Sigaud](https://github.com/mtrazzi/two-step-task), who themselves made use of [awjuliani's Meta-RL implementation](https://github.com/awjuliani/Meta-RL)(a single-threaded A2C LSTM implementation). For conceptual understanding you can also read [Michaels article on Medium](https://blog.floydhub.com/meta-rl/) and [Arthurs post](https://medium.com/hackernoon/learning-policies-for-learning-policies-meta-reinforcement-learning-rl%C2%B2-in-tensorflow-b15b592a2ddf).
+This largely mirros and is based on on a tensorflow implementation of the same agent by [Michaël Trazzi and Yasmine Hamdani, under the supervision of Olivier Sigaud](https://github.com/mtrazzi/two-step-task), who themselves made use of [awjuliani's Meta-RL implementation](https://github.com/awjuliani/Meta-RL) (a single-threaded A2C LSTM implementation). For conceptual understanding you can also read [Michaels article on Medium](https://blog.floydhub.com/meta-rl/) and [Arthurs post](https://medium.com/hackernoon/learning-policies-for-learning-policies-meta-reinforcement-learning-rl%C2%B2-in-tensorflow-b15b592a2ddf).
 
 Additionally to previous implementations, I added more logging and put a focus on code readibility/understanding of the implementation.
 
 Specifically:
 * `basenet.py` contains the basic implementation
 * `basenet_onepass.py` just uses one pass for each trial through the network instead of two (episode rollout and gradient tags are gathered from one forward pass of the network); the computed gradients are identical in both approaches
-* `basenet_altloss.py` uses a different kind of loss (as described on [here](https://github.com/rpatrik96/pytorch-a2c/blob/master/src/runner.py)); havent yet found a working hyperparameter config (or maybe my implementation is wrong)
-* `basenet_altloss2.py` uses a different kind of loss (using the code of [Ilya Kostrikov](https://github.com/ikostrikov/pytorch-a3c/blob/master/train.py)); 
+* ~~~`basenet_altloss.py` uses a different kind of loss (as described on [here](https://github.com/rpatrik96/pytorch-a2c/blob/master/src/runner.py)); havent yet found a working hyperparameter config (or maybe my implementation is wrong)~~~
+* `basenet_altloss2.py` uses a different kind of A2C based loss (using the code of [Ilya Kostrikov](https://github.com/ikostrikov/pytorch-a3c/blob/master/train.py)); 
 * extnet.py introduces a novel task (described in XXX). It also only uses one forward pass through the network to calculate everything nessesary.
 
 This is my first implementation of an ANN and hence errors / suboptimal code may be contained.
