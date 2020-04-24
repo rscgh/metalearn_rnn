@@ -11,6 +11,7 @@ Specifically:
 * `basenet_onepass.py` just uses one pass for each trial through the network instead of two (episode rollout and gradient tags are gathered from one forward pass of the network); the computed gradients are identical in both approaches
 * ~~~`basenet_altloss.py` uses a different kind of loss (as described on [here](https://github.com/rpatrik96/pytorch-a2c/blob/master/src/runner.py)); havent yet found a working hyperparameter config (or maybe my implementation is wrong)~~~
 * `basenet_altloss2.py` uses a different kind of A2C based loss (using the code of [Ilya Kostrikov](https://github.com/ikostrikov/pytorch-a3c/blob/master/train.py)); 
+* crossentropy loss [via here](https://www.deeplearningwizard.com/deep_learning/practical_pytorch/pytorch_lstm_neuralnetwork/)
 * extnet.py introduces a novel task (described in XXX). It also only uses one forward pass through the network to calculate everything nessesary.
 
 This is my first implementation of an ANN and hence errors / suboptimal code may be contained.
