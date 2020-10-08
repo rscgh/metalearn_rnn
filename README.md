@@ -1,8 +1,6 @@
 # metalearn_rnn
 
-This is a pytorch implementation of the agent described in [Wang et al., 2018](https://www.biorxiv.org/content/biorxiv/early/2018/04/13/295964.full.pdf)..
-
-#ech
+This is a pytorch implementation of the agent described in [Wang et al., 2018](https://www.biorxiv.org/content/biorxiv/early/2018/04/13/295964.full.pdf).
 
 This largely mirros and is based on on a tensorflow implementation of the same agent by [Michaël Trazzi and Yasmine Hamdani, under the supervision of Olivier Sigaud](https://github.com/mtrazzi/two-step-task), who themselves made use of [awjuliani's Meta-RL implementation](https://github.com/awjuliani/Meta-RL) (a single-threaded A2C LSTM implementation). For conceptual understanding you can also read [Michaels article on Medium](https://blog.floydhub.com/meta-rl/) and [Arthurs post](https://medium.com/hackernoon/learning-policies-for-learning-policies-meta-reinforcement-learning-rl%C2%B2-in-tensorflow-b15b592a2ddf).
 
